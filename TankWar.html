@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Tank War</title>
+</head>
+<!--comment-->
+<body>
+  <h1>Tank War testing</h1>
+  <button onclick="startGame()">Click to start</button>
+</body>
+
+<script>
+var redObj;
+var bulletPool = [];
+
+function startGame(){
+  myGame.start();
+  window.addEventListener("keydown", doKeyDown, false);
+  window.addEventListener("keyup", doKeyUp, false);
+  redObj = new player(30, 30, "red", 10, 120, 2, 2);
+}
+
+// detecting arrow key
+function doKeyDown(key){
+  if(key.keyCode == 38){ // up arrow
+    redObj.moveUp();
+    console.log("up arrow pressed");
+  }
+  if(key.keyCode == 40){ // down arrow
+    redObj.moveDown();
+    console.log("down arrow pressed");
+  }
+  if(key.keyCode == 37){ // left arrow
+    redObj.moveLeft();
+    console.log("left arrow pressed");
+  }
+  if(key.keyCode == 39){ // right arrow
+    redObj.moveRight();
+    console.log("right arrow pressed");
+  }
+  if(key.keyCode == 32){ // space
+    console.log("space pressed, fire!");
+    redObj.fire();
+  }
+}
+
+// idk what the fuck is this for
+function doKeyUp(key){
+  if(key.keyCode == 38){ // up arrow
+    key.preventDefault();
+  }
+  if(key.keyCode == 40){ // down arrow
+    key.preventDefault();
+  }
+  if(key.keyCode == 37){ // left arrow
+    key.preventDefault();
+  }
+  if(key.keyCode == 39){ // right arrow
+    key.preventDefault();
+  }
+  if(key.keyCode == 32){ // space
+    key.preventDefault();
+  }
+}
+
+// component constructor
+function player(width, height, color, x, y, sx, sy){
+  // game data
+  this.health = 10;
+  this.attack = 1;
+
+  // display data
+  this.width = width;
+  this.height = height;
+  this.x = x;
+  this.y = y;
+  this.speedx = sx;
+  this.speedy = sy;
+  this.direction = 3; //default facing to the right
+  this.update = function(){
+    thing = myGame.context;
+    thing.fillStyle = color;
+    thing.fillRect(this.x, this.y, this.width, this.height);
+  }
+  this.moveUp = function(){
+    this.y -= this.speedy;
+    this.direction = 0;
+  }
+  this.moveDown = function(){
+    this.y += this.speedy;
+    this.direction = 1;
+  }
+  this.moveLeft = function(){
+    this.x -= this.speedy;
+    this.direction = 2;
+  }
+  this.moveRight = function(){
+    this.x += this.speedy;
+    this.direction = 3;
+  }
+  this.fire = function(){
+    // adding a new bullet element to the bullet bulletPool
+    // allowing for bullet flying animation
+    bulletPool.push(new bullet(this.width/2, this.height/2, this.color, this.x+this.width/4, this.y+this.height/4, this.direction, this.attack));
+  }
+}
+
+// bullet constructor
+function bullet(width, height, color, x, y, direction, damage){
+  // game data
+  this.damage = damage;
+
+  // display data
+  this.width = width;
+  this.height = height;
+  this.x = x;
+  this.y = y;
+  this.direction = direction;
+  // 0 for up, 1 for down, 2 for left, 3 for right
+  this.update = function(){
+    thing = myGame.context;
+    thing.fillStyle = color;
+    thing.fillRect(this.x, this.y, this.width, this.height);
+  }
+  this.move = function(){
+    // let the bullet fly in the object facing direction
+    switch (this.direction) {
+      case 0: // up
+      this.y -= 3;
+      break;
+      case 1: // down
+      this.y += 3;
+      break;
+      case 2: // left
+      this.x -= 3;
+      break;
+      case 3: // right
+      this.x += 3;
+      break;
+    }
+  }
+  this.checkBound = function(){
+    // checking whether the bullet has flied out of the canvas
+    return (this.x < 0 || this.x > 960 || this.y < 0 || this.y > 540);
+  }
+}
+
+// update game area
+function updateGameArea(){
+  myGame.clear();
+  redObj.update();
+  for(i in bulletPool){
+    // console.log(bulletPool[thing]);
+    bulletPool[i].update();
+    bulletPool[i].move();
+    if(bulletPool[i].checkBound()){
+      // delete unnecessary bullets
+      bulletPool.splice(i, 1);
+    }
+  }
+}
+
+// game canvas object
+var myGame = {
+  canvas : document.createElement("canvas"),
+  start : function(){
+    this.canvas.width = 960;
+    this.canvas.height = 540;
+    this.canvas.style="border: 1px solid black;"
+    this.context = this.canvas.getContext("2d");
+    document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+    this.interval = setInterval(updateGameArea, 20);
+  },
+  clear : function(){
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+}
+</script>
+
+</html>
