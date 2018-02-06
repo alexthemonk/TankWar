@@ -13,6 +13,7 @@
 <script>
 var redObj;
 var bulletPool = [];
+var keyPool = [];
 
 function startGame(){
   myGame.start();
@@ -21,47 +22,15 @@ function startGame(){
   redObj = new player(30, 30, "red", 10, 120, 2, 2);
 }
 
-// detecting arrow key
+// detecting key down
 function doKeyDown(key){
-  if(key.keyCode == 38){ // up arrow
-    redObj.moveUp();
-    console.log("up arrow pressed");
-  }
-  if(key.keyCode == 40){ // down arrow
-    redObj.moveDown();
-    console.log("down arrow pressed");
-  }
-  if(key.keyCode == 37){ // left arrow
-    redObj.moveLeft();
-    console.log("left arrow pressed");
-  }
-  if(key.keyCode == 39){ // right arrow
-    redObj.moveRight();
-    console.log("right arrow pressed");
-  }
-  if(key.keyCode == 32){ // space
-    console.log("space pressed, fire!");
-    redObj.fire();
-  }
+  key.preventDefault();
+  keyPool[key.keyCode] = true;
 }
 
-// idk what the fuck is this for
+// when release the key
 function doKeyUp(key){
-  if(key.keyCode == 38){ // up arrow
-    key.preventDefault();
-  }
-  if(key.keyCode == 40){ // down arrow
-    key.preventDefault();
-  }
-  if(key.keyCode == 37){ // left arrow
-    key.preventDefault();
-  }
-  if(key.keyCode == 39){ // right arrow
-    key.preventDefault();
-  }
-  if(key.keyCode == 32){ // space
-    key.preventDefault();
-  }
+  keyPool[key.keyCode] = false;
 }
 
 // component constructor
@@ -69,6 +38,7 @@ function player(width, height, color, x, y, sx, sy){
   // game data
   this.health = 10;
   this.attack = 1;
+  this.cooldown = 500;
 
   // display data
   this.width = width;
@@ -78,6 +48,7 @@ function player(width, height, color, x, y, sx, sy){
   this.speedx = sx;
   this.speedy = sy;
   this.direction = 3; //default facing to the right
+  this.canFire = true;
   this.update = function(){
     thing = myGame.context;
     thing.fillStyle = color;
@@ -99,10 +70,21 @@ function player(width, height, color, x, y, sx, sy){
     this.x += this.speedy;
     this.direction = 3;
   }
+  this.resetFire = function(scope){
+    console.log("cd reset for" + this);
+    scope.canFire = true;
+  }
   this.fire = function(){
     // adding a new bullet element to the bullet bulletPool
     // allowing for bullet flying animation
-    bulletPool.push(new bullet(this.width/2, this.height/2, this.color, this.x+this.width/4, this.y+this.height/4, this.direction, this.attack));
+    var thing = this;
+    if(this.canFire){
+      bulletPool.push(new bullet(this.width/2, this.height/2, this.color, this.x+this.width/4, this.y+this.height/4, this.direction, this.attack));
+      this.canFire = false;
+      setTimeout(function(){
+        thing.resetFire(thing);
+      }, thing.cooldown);
+    }
   }
 }
 
@@ -158,6 +140,27 @@ function updateGameArea(){
       // delete unnecessary bullets
       bulletPool.splice(i, 1);
     }
+  }
+
+  if(keyPool[38]){ // up arrow
+    redObj.moveUp();
+    console.log("up arrow pressed");
+  }
+  if(keyPool[40]){ // down arrow
+    redObj.moveDown();
+    console.log("down arrow pressed");
+  }
+  if(keyPool[37]){ // left arrow
+    redObj.moveLeft();
+    console.log("left arrow pressed");
+  }
+  if(keyPool[39]){ // right arrow
+    redObj.moveRight();
+    console.log("right arrow pressed");
+  }
+  if(keyPool[32]){ // space
+    console.log("space pressed, fire!");
+    redObj.fire();
   }
 }
 
