@@ -11,6 +11,8 @@
 </body>
 
 <script>
+canvasHeight = 540;
+canvasWidth = 960;
 var redObj;
 var bulletPool = [];
 var keyPool = [];
@@ -20,6 +22,7 @@ function startGame(){
   window.addEventListener("keydown", doKeyDown, false);
   window.addEventListener("keyup", doKeyUp, false);
   redObj = new player(30, 30, "red", 10, 120, 2, 2);
+  greenObj = new player(30, 30, "green", 900, 120, 2, 2);
 }
 
 // detecting key down
@@ -49,25 +52,34 @@ function player(width, height, color, x, y, sx, sy){
   this.speedy = sy;
   this.direction = 3; //default facing to the right
   this.canFire = true;
+  this.color = color;
   this.update = function(){
     thing = myGame.context;
     thing.fillStyle = color;
     thing.fillRect(this.x, this.y, this.width, this.height);
   }
   this.moveUp = function(){
-    this.y -= this.speedy;
+    if(this.y - this.speedy >= 0){
+      this.y -= this.speedy;
+    }
     this.direction = 0;
   }
   this.moveDown = function(){
-    this.y += this.speedy;
+    if(this.y + this.speedy + this.height <= canvasHeight){
+      this.y += this.speedy;
+    }
     this.direction = 1;
   }
   this.moveLeft = function(){
-    this.x -= this.speedy;
+    if(this.x - this.speedx >= 0){
+      this.x -= this.speedx;
+    }
     this.direction = 2;
   }
   this.moveRight = function(){
-    this.x += this.speedy;
+    if(this.x + this.speedx + this.width <= canvasWidth){
+      this.x += this.speedx;
+    }
     this.direction = 3;
   }
   this.resetFire = function(scope){
@@ -99,6 +111,7 @@ function bullet(width, height, color, x, y, direction, damage){
   this.x = x;
   this.y = y;
   this.direction = direction;
+  this.color = color;
   // 0 for up, 1 for down, 2 for left, 3 for right
   this.update = function(){
     thing = myGame.context;
@@ -124,7 +137,12 @@ function bullet(width, height, color, x, y, direction, damage){
   }
   this.checkBound = function(){
     // checking whether the bullet has flied out of the canvas
-    return (this.x < 0 || this.x > 960 || this.y < 0 || this.y > 540);
+    return (this.x < 0 || this.x+this.width > canvasWidth || this.y < 0 || this.y+this.height > canvasHeight);
+  }
+  this.collision = function(){
+    // checking for whether the bullet hits a object
+    // if the bullet is not fired from that object
+    // delete the bullet, object.HP - bullet.damage
   }
 }
 
@@ -132,6 +150,7 @@ function bullet(width, height, color, x, y, direction, damage){
 function updateGameArea(){
   myGame.clear();
   redObj.update();
+  greenObj.update();
   for(i in bulletPool){
     // console.log(bulletPool[thing]);
     bulletPool[i].update();
@@ -168,8 +187,8 @@ function updateGameArea(){
 var myGame = {
   canvas : document.createElement("canvas"),
   start : function(){
-    this.canvas.width = 960;
-    this.canvas.height = 540;
+    this.canvas.width = canvasWidth;
+    this.canvas.height = canvasHeight;
     this.canvas.style="border: 1px solid black;"
     this.context = this.canvas.getContext("2d");
     document.body.insertBefore(this.canvas, document.body.childNodes[0]);
