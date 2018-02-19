@@ -11,9 +11,10 @@
 </body>
 
 <script>
-canvasHeight = 540;
+enemyNum = 3;
+canvasHeight = 600;
 canvasWidth = 960;
-var redObj;
+var objPool = [];
 var bulletPool = [];
 var keyPool = [];
 
@@ -22,7 +23,20 @@ function startGame(){
   window.addEventListener("keydown", doKeyDown, false);
   window.addEventListener("keyup", doKeyUp, false);
   redObj = new player(30, 30, "red", 10, 120, 2, 2);
-  greenObj = new player(30, 30, "green", 900, 120, 2, 2);
+  objPool.push(redObj);
+  for(i = 0; i < enemyNum; i ++){
+    randomx = Math.floor(Math.random() * canvasWidth);
+    randomy = Math.floor(Math.random() * canvasHeight);
+    objPool.push(new player(30, 30, "green", randomx, randomy, 2, 2));
+  }
+}
+
+// detecting collision
+function collision(playerObj, bulletObj){
+  return (playerObj.x < bulletObj.x + bulletObj.width &&
+   playerObj.x + playerObj.width > bulletObj.x &&
+   playerObj.y < bulletObj.y + bulletObj.height &&
+   playerObj.height + playerObj.y > bulletObj.y);
 }
 
 // detecting key down
@@ -91,7 +105,28 @@ function player(width, height, color, x, y, sx, sy){
     // allowing for bullet flying animation
     var thing = this;
     if(this.canFire){
-      bulletPool.push(new bullet(this.width/2, this.height/2, this.color, this.x+this.width/4, this.y+this.height/4, this.direction, this.attack));
+      // calculating firing location
+      var firex;
+      var firey;
+      switch (this.direction) {
+        case 0: // up
+          firex = this.x+this.width/4;
+          firey = this.y-this.height/2-5;
+          break;
+        case 1: // down
+          firex = this.x+this.width/4;
+          firey = this.y+this.height+5;
+          break;
+        case 2: // left
+          firex = this.x-this.width/2-5;
+          firey = this.y+this.height/4;
+          break;
+        case 3: // right
+          firex = this.x+this.width+5;
+          firey = this.y+this.height/4;
+          break;
+      }
+      bulletPool.push(new bullet(this.width/2, this.height/2, this.color, firex, firey, this.direction, this.attack));
       this.canFire = false;
       setTimeout(function(){
         thing.resetFire(thing);
@@ -149,8 +184,12 @@ function bullet(width, height, color, x, y, direction, damage){
 // update game area
 function updateGameArea(){
   myGame.clear();
-  redObj.update();
-  greenObj.update();
+  for(i in objPool){
+    objPool[i].update();
+    if(objPool[i].health <= 0){
+      objPool.splice(i, 1);
+    }
+  }
   for(i in bulletPool){
     // console.log(bulletPool[thing]);
     bulletPool[i].update();
@@ -161,6 +200,17 @@ function updateGameArea(){
     }
   }
 
+  // bullet / tank collision
+  for(i in bulletPool){
+    for(j in objPool){
+      if(collision(objPool[j], bulletPool[i])){
+        objPool[j].health -= bulletPool[i].damage;
+        bulletPool.splice(i, 1);
+      }
+    }
+  }
+
+  // player moving detection
   if(keyPool[38]){ // up arrow
     redObj.moveUp();
     console.log("up arrow pressed");
