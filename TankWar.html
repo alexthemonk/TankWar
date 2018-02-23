@@ -11,13 +11,11 @@
 </body>
 
 <script>
-enemyNum = 3;
+enemyNum = 10;
 canvasHeight = 600;
 canvasWidth = 960;
 var playerPool = [];
 var aiPool = [];
-var aiMovePool = [];
-var aiTimeOutPool = [];
 var bulletPool = [];
 var keyPool = [];
 
@@ -25,26 +23,13 @@ function startGame(){
   myGame.start();
   window.addEventListener("keydown", doKeyDown, false);
   window.addEventListener("keyup", doKeyUp, false);
-  redObj = new player(30, 30, "red", 10, 120, 2, 2);
+  redObj = new player(30, 30, "red", 10, 120, 2, 2, true);
   playerPool.push(redObj);
   for(i = 0; i < enemyNum; i ++){
     randomx = Math.floor(Math.random() * (canvasWidth-30));
     randomy = Math.floor(Math.random() * (canvasHeight-30));
-    aiPool.push(new player(30, 30, "green", randomx, randomy, 2, 2));
-    aiMovePool.push(Math.floor(Math.random() * 5));
-    // set ai movement time interval
-    aiTimeOut(i);
+    aiPool.push(new player(30, 30, "green", randomx, randomy, 2, 2, false));
   }
-}
-
-// ai movement timeout function
-function aiTimeOut(index){
-  aiMovePool[index] = Math.floor(Math.random() * 5);
-  // console.log("Setting another time out for ai #", i, " with direction: ", aiMovePool[index]);
-  clearTimeout(aiTimeOutPool[index]);
-  aiTimeOutPool[index] = setTimeout(function(){
-    aiTimeOut(index);
-  }, Math.floor(Math.random() * 1500));
 }
 
 // detecting collision
@@ -69,7 +54,7 @@ function doKeyUp(key){
 }
 
 // component constructor
-function player(width, height, color, x, y, sx, sy){
+function player(width, height, color, x, y, sx, sy, isPlayer){
   // game data
   this.health = 10;
   this.attack = 1;
@@ -82,9 +67,12 @@ function player(width, height, color, x, y, sx, sy){
   this.y = y;
   this.speedx = sx;
   this.speedy = sy;
-  this.direction = 3; //default facing to the right
+  this.direction = 3; // default facing to the right
+  this.moving = Math.floor(Math.random() * 5); // default random moving, only using for ai
   this.canFire = true;
   this.color = color;
+  this.timeoutID;
+
   this.update = function(){
     thing = myGame.context;
     thing.fillStyle = color;
@@ -151,6 +139,22 @@ function player(width, height, color, x, y, sx, sy){
       }, thing.cooldown);
     }
   }
+  // ai movement timeout function, only for ai
+  this.aiTimeOut = function(){
+    var thing = this;
+    this.moving = Math.floor(Math.random() * 5);
+    console.log("Setting another time out for ai #", this, " with direction: ", this.moving);
+    this.timeoutID = setTimeout(function(){
+      thing.aiTimeOut();
+    }, Math.floor(Math.random() * 1500));
+  }
+  if(!isPlayer){
+    this.aiTimeOut();
+  }
+
+  this.clearSelf = function(){
+    clearTimeout(this.timeoutID);
+  }
 }
 
 // bullet constructor
@@ -206,15 +210,13 @@ function updateGameArea(){
   for(i in aiPool){
     aiPool[i].update();
     if(aiPool[i].health <= 0){
+      aiPool[i].clearSelf();
       aiPool.splice(i, 1);
-      // aiMovePool.splice(i, 1);
-      // clearTimeout(aiTimeOutPool[i]);
-      // aiTimeOutPool.splice(i, 1);
     }
   }
 
   for(i in aiPool){
-    switch (aiMovePool[i]) {
+    switch (aiPool[i].moving) {
       // 0 for up, 1 for down, 2 for left, 3 for right, 4 for not moving
       case 0:
         aiPool[i].moveUp();
