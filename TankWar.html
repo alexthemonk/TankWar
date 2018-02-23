@@ -14,7 +14,10 @@
 enemyNum = 3;
 canvasHeight = 600;
 canvasWidth = 960;
-var objPool = [];
+var playerPool = [];
+var aiPool = [];
+var aiMovePool = [];
+var aiTimeOutPool = [];
 var bulletPool = [];
 var keyPool = [];
 
@@ -23,16 +26,31 @@ function startGame(){
   window.addEventListener("keydown", doKeyDown, false);
   window.addEventListener("keyup", doKeyUp, false);
   redObj = new player(30, 30, "red", 10, 120, 2, 2);
-  objPool.push(redObj);
+  playerPool.push(redObj);
   for(i = 0; i < enemyNum; i ++){
-    randomx = Math.floor(Math.random() * canvasWidth);
-    randomy = Math.floor(Math.random() * canvasHeight);
-    objPool.push(new player(30, 30, "green", randomx, randomy, 2, 2));
+    randomx = Math.floor(Math.random() * (canvasWidth-30));
+    randomy = Math.floor(Math.random() * (canvasHeight-30));
+    aiPool.push(new player(30, 30, "green", randomx, randomy, 2, 2));
+    aiMovePool.push(Math.floor(Math.random() * 5));
+    // set ai movement time interval
+    aiTimeOut(i);
   }
+}
+
+// ai movement timeout function
+function aiTimeOut(index){
+  aiMovePool[index] = Math.floor(Math.random() * 5);
+  // console.log("Setting another time out for ai #", i, " with direction: ", aiMovePool[index]);
+  clearTimeout(aiTimeOutPool[index]);
+  aiTimeOutPool[index] = setTimeout(function(){
+    aiTimeOut(index);
+  }, Math.floor(Math.random() * 1500));
 }
 
 // detecting collision
 function collision(playerObj, bulletObj){
+  if(playerObj == undefined || bulletObj == undefined) return false;
+  // console.log("Checking collision for player: ", playerObj, " and bullet: ", bulletObj);
   return (playerObj.x < bulletObj.x + bulletObj.width &&
    playerObj.x + playerObj.width > bulletObj.x &&
    playerObj.y < bulletObj.y + bulletObj.height &&
@@ -97,7 +115,7 @@ function player(width, height, color, x, y, sx, sy){
     this.direction = 3;
   }
   this.resetFire = function(scope){
-    console.log("cd reset for" + this);
+    // console.log("cd reset for" + this);
     scope.canFire = true;
   }
   this.fire = function(){
@@ -174,22 +192,45 @@ function bullet(width, height, color, x, y, direction, damage){
     // checking whether the bullet has flied out of the canvas
     return (this.x < 0 || this.x+this.width > canvasWidth || this.y < 0 || this.y+this.height > canvasHeight);
   }
-  this.collision = function(){
-    // checking for whether the bullet hits a object
-    // if the bullet is not fired from that object
-    // delete the bullet, object.HP - bullet.damage
-  }
 }
 
 // update game area
 function updateGameArea(){
   myGame.clear();
-  for(i in objPool){
-    objPool[i].update();
-    if(objPool[i].health <= 0){
-      objPool.splice(i, 1);
+  for(i in playerPool){
+    playerPool[i].update();
+    if(playerPool[i].health <= 0){
+      playerPool.splice(i, 1);
     }
   }
+  for(i in aiPool){
+    aiPool[i].update();
+    if(aiPool[i].health <= 0){
+      aiPool.splice(i, 1);
+      aiMovePool.splice(i, 1);
+      clearTimeout(aiTimeOutPool[i]);
+      aiTimeOutPool.splice(i, 1);
+    }
+  }
+
+  for(i in aiPool){
+    switch (aiMovePool[i]) {
+      // 0 for up, 1 for down, 2 for left, 3 for right, 4 for not moving
+      case 0:
+        aiPool[i].moveUp();
+        break;
+      case 1:
+        aiPool[i].moveDown();
+        break;
+      case 2:
+        aiPool[i].moveLeft();
+        break;
+      case 3:
+        aiPool[i].moveRight();
+        break;
+      }
+  }
+
   for(i in bulletPool){
     // console.log(bulletPool[thing]);
     bulletPool[i].update();
@@ -202,9 +243,17 @@ function updateGameArea(){
 
   // bullet / tank collision
   for(i in bulletPool){
-    for(j in objPool){
-      if(collision(objPool[j], bulletPool[i])){
-        objPool[j].health -= bulletPool[i].damage;
+    for(j in playerPool){
+      if(collision(playerPool[j], bulletPool[i])){
+        playerPool[j].health -= bulletPool[i].damage;
+        bulletPool.splice(i, 1);
+      }
+    }
+  }
+  for(i in bulletPool){
+    for(j in aiPool){
+      if(collision(aiPool[j], bulletPool[i])){
+        aiPool[j].health -= bulletPool[i].damage;
         bulletPool.splice(i, 1);
       }
     }
@@ -213,22 +262,22 @@ function updateGameArea(){
   // player moving detection
   if(keyPool[38]){ // up arrow
     redObj.moveUp();
-    console.log("up arrow pressed");
+    // console.log("up arrow pressed");
   }
   if(keyPool[40]){ // down arrow
     redObj.moveDown();
-    console.log("down arrow pressed");
+    // console.log("down arrow pressed");
   }
   if(keyPool[37]){ // left arrow
     redObj.moveLeft();
-    console.log("left arrow pressed");
+    // console.log("left arrow pressed");
   }
   if(keyPool[39]){ // right arrow
     redObj.moveRight();
-    console.log("right arrow pressed");
+    // console.log("right arrow pressed");
   }
   if(keyPool[32]){ // space
-    console.log("space pressed, fire!");
+    // console.log("space pressed, fire!");
     redObj.fire();
   }
 }
