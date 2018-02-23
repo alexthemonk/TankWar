@@ -207,9 +207,9 @@ function updateGameArea(){
     aiPool[i].update();
     if(aiPool[i].health <= 0){
       aiPool.splice(i, 1);
-      aiMovePool.splice(i, 1);
-      clearTimeout(aiTimeOutPool[i]);
-      aiTimeOutPool.splice(i, 1);
+      // aiMovePool.splice(i, 1);
+      // clearTimeout(aiTimeOutPool[i]);
+      // aiTimeOutPool.splice(i, 1);
     }
   }
 
