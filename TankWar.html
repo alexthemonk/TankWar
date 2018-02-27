@@ -11,7 +11,7 @@
 </body>
 
 <script>
-enemyNum = 10;
+enemyNum = 20;
 canvasHeight = 600;
 canvasWidth = 960;
 var playerPool = [];
@@ -19,16 +19,24 @@ var aiPool = [];
 var bulletPool = [];
 var keyPool = [];
 
+var playerTankImage = new Image();
+playerTankImage.src = 'PlayerTank.png';
+var AiTankImage = new Image();
+AiTankImage.src = 'AITank.png';
+var bulletImage = new Image();
+bulletImage.src = 'Bullet.png';
+
 function startGame(){
   myGame.start();
+  board.start();
   window.addEventListener("keydown", doKeyDown, false);
   window.addEventListener("keyup", doKeyUp, false);
-  redObj = new player(30, 30, "red", 10, 120, 2, 2, true);
-  playerPool.push(redObj);
+  player1Obj = new player(0, 30, 30, "red", 10, 120, 2, 2, true, playerTankImage);
+  playerPool.push(player1Obj);
   for(i = 0; i < enemyNum; i ++){
     randomx = Math.floor(Math.random() * (canvasWidth-30));
     randomy = Math.floor(Math.random() * (canvasHeight-30));
-    aiPool.push(new player(30, 30, "green", randomx, randomy, 2, 2, false));
+    aiPool.push(new player(-1, 30, 30, "green", randomx, randomy, 2, 2, false, AiTankImage));
   }
 }
 
@@ -36,10 +44,21 @@ function startGame(){
 function collision(playerObj, bulletObj){
   if(playerObj == undefined || bulletObj == undefined) return false;
   // console.log("Checking collision for player: ", playerObj, " and bullet: ", bulletObj);
-  return (playerObj.x < bulletObj.x + bulletObj.width &&
-   playerObj.x + playerObj.width > bulletObj.x &&
-   playerObj.y < bulletObj.y + bulletObj.height &&
-   playerObj.height + playerObj.y > bulletObj.y);
+  return (playerObj.x - playerObj.width/2 < bulletObj.x + bulletObj.width/2 &&
+   playerObj.x + playerObj.width/2 > bulletObj.x - bulletObj.width/2 &&
+   playerObj.y - playerObj.height/2 < bulletObj.y + bulletObj.height/2 &&
+   playerObj.y + playerObj.height/2 > bulletObj.y - bulletObj.height/2);
+}
+
+// detecting tank collision
+function objCollision(obj1, obj2){
+  // return the blocking direction regarding all the other objects
+  // 0 for up, 1 for down, 2 for left, 3 for right, 4 for not blocked
+  if(obj1.x+obj1.width > obj2.x && obj1.x < obj2.x+obj2.width && obj1.y-obj1.speedy < obj2.y+obj2.height && obj1.y-obj1.speedy > obj2.y) return 0;
+  if(obj1.x+obj1.width > obj2.x && obj1.x < obj2.x+obj2.width && obj1.y+obj1.height+obj1.speedy < obj2.y+obj2.height && obj1.y+obj1.height+obj1.speedy > obj2.y) return 1;
+  if(obj1.y+obj1.height > obj2.y && obj1.y < obj2.y+obj2.height && obj1.x-obj1.speedx < obj2.x+obj2.width && obj1.x-obj1.speedx > obj2.x) return 2;
+  if(obj1.y+obj1.height > obj2.y && obj1.y < obj2.y+obj2.height && obj1.x+obj1.width+obj1.speedx < obj2.x+obj2.width && obj1.x+obj1.width+obj1.speedx > obj2.x) return 3;
+  return 4;
 }
 
 // detecting key down
@@ -54,17 +73,19 @@ function doKeyUp(key){
 }
 
 // component constructor
-function player(width, height, color, x, y, sx, sy, isPlayer){
+function player(id, width, height, color, x, y, sx, sy, isPlayer, pic){
   // game data
-  this.health = 10;
+  this.id = id;
+  this.health = 5;
   this.attack = 1;
   this.cooldown = 500;
+  this.score = 0;
 
   // display data
   this.width = width;
   this.height = height;
-  this.x = x;
-  this.y = y;
+  this.x = x + this.width/2;
+  this.y = y + this.height/2;
   this.speedx = sx;
   this.speedy = sy;
   this.direction = 3; // default facing to the right
@@ -72,32 +93,118 @@ function player(width, height, color, x, y, sx, sy, isPlayer){
   this.canFire = true;
   this.color = color;
   this.timeoutID;
+  this.timeoutFireID;
+  this.pic = pic;
 
   this.update = function(){
+    var rotateAngle;
     thing = myGame.context;
-    thing.fillStyle = color;
-    thing.fillRect(this.x, this.y, this.width, this.height);
+    // thing.fillStyle = color;
+    // thing.fillRect(this.x, this.y, this.width, this.height);
+    switch (this.direction) {
+      case 0:
+        rotateAngle = 0;
+        break;
+      case 1:
+        rotateAngle = Math.PI;
+        break;
+
+      case 2:
+        rotateAngle = 3 * Math.PI / 2;
+        break;
+
+      case 3:
+        rotateAngle = Math.PI / 2;
+        break;
+    }
+    // thing.save();
+    thing.translate(this.x, this.y);
+    thing.rotate(rotateAngle);
+    thing.drawImage(this.pic, -this.width/2, -this.height/2, this.width, this.height);
+    thing.rotate(-rotateAngle);
+    thing.translate(-this.x, -this.y);
+    // thing.restore();
   }
   this.moveUp = function(){
-    if(this.y - this.speedy >= 0){
+    var upmoving = true;
+    for(thing in aiPool){
+      if(this != aiPool[thing]){
+        if(objCollision(this, aiPool[thing]) == 0){
+          upmoving = false;
+        }
+      }
+    }
+    for(thing in playerPool){
+      if(this != playerPool[thing]){
+        if(objCollision(this, playerPool[thing]) == 0){
+          upmoving = false;
+        }
+      }
+    }
+    if(this.y - this.speedy - this.height/2 >= 0 && upmoving){
       this.y -= this.speedy;
     }
     this.direction = 0;
   }
   this.moveDown = function(){
-    if(this.y + this.speedy + this.height <= canvasHeight){
+    var downmoving = true;
+    for(thing in aiPool){
+      if(this != aiPool[thing]){
+        if(objCollision(this, aiPool[thing]) == 1){
+          downmoving = false;
+        }
+      }
+    }
+    for(thing in playerPool){
+      if(this != playerPool[thing]){
+        if(objCollision(this, playerPool[thing]) == 1){
+          downmoving = false;
+        }
+      }
+    }
+    if(this.y + this.speedy + this.height/2 <= canvasHeight && downmoving){
       this.y += this.speedy;
     }
     this.direction = 1;
   }
   this.moveLeft = function(){
-    if(this.x - this.speedx >= 0){
+    var leftmoving = true;
+    for(thing in aiPool){
+      if(this != aiPool[thing]){
+        if(objCollision(this, aiPool[thing]) == 2){
+          leftmoving = false;
+        }
+      }
+    }
+    for(thing in playerPool){
+      if(this != playerPool[thing]){
+        if(objCollision(this, playerPool[thing]) == 2){
+          leftmoving = false;
+        }
+      }
+    }
+    if(this.x - this.speedx - this.width/2 >= 0 && leftmoving){
       this.x -= this.speedx;
     }
     this.direction = 2;
   }
   this.moveRight = function(){
-    if(this.x + this.speedx + this.width <= canvasWidth){
+    var rightmoving = true;
+    for(thing in aiPool){
+      if(this != aiPool[thing]){
+        if(objCollision(this, aiPool[thing]) == 3){
+          rightmoving = false;
+        }
+      }
+    }
+    for(thing in playerPool){
+      if(this != playerPool[thing]){
+        if(objCollision(this, playerPool[thing]) == 3){
+          rightmoving = false;
+        }
+      }
+    }
+    if(this.x + this.speedx + this.width/2 <= canvasWidth && rightmoving){
       this.x += this.speedx;
     }
     this.direction = 3;
@@ -116,23 +223,23 @@ function player(width, height, color, x, y, sx, sy, isPlayer){
       var firey;
       switch (this.direction) {
         case 0: // up
-          firex = this.x+this.width/4;
-          firey = this.y-this.height/2-5;
+          firex = this.x;
+          firey = this.y-this.height/2-10;
           break;
         case 1: // down
-          firex = this.x+this.width/4;
-          firey = this.y+this.height+5;
+          firex = this.x;
+          firey = this.y+this.height/2+10;
           break;
         case 2: // left
-          firex = this.x-this.width/2-5;
-          firey = this.y+this.height/4;
+          firex = this.x-this.width/2-10;
+          firey = this.y;
           break;
         case 3: // right
-          firex = this.x+this.width+5;
-          firey = this.y+this.height/4;
+          firex = this.x+this.width/2+10;
+          firey = this.y;
           break;
       }
-      bulletPool.push(new bullet(this.width/2, this.height/2, this.color, firex, firey, this.direction, this.attack));
+      bulletPool.push(new bullet(this.id, this.width/2, this.height/2, this.color, firex, firey, this.direction, this.attack, bulletImage));
       this.canFire = false;
       setTimeout(function(){
         thing.resetFire(thing);
@@ -143,37 +250,74 @@ function player(width, height, color, x, y, sx, sy, isPlayer){
   this.aiTimeOut = function(){
     var thing = this;
     this.moving = Math.floor(Math.random() * 5);
-    console.log("Setting another time out for ai #", this, " with direction: ", this.moving);
+    // console.log("Setting another time out for ai #", this, " with direction: ", this.moving);
     this.timeoutID = setTimeout(function(){
       thing.aiTimeOut();
     }, Math.floor(Math.random() * 1500));
   }
+  this.aiFireTimeOut = function(){
+    var thing = this;
+    this.fire();
+    // console.log("Setting another time out for ai #", this, " with direction: ", this.moving);
+    this.timeoutFireID = setTimeout(function(){
+      thing.aiFireTimeOut();
+    }, Math.floor(Math.random() * 1500));
+  }
+
   if(!isPlayer){
     this.aiTimeOut();
+    this.aiFireTimeOut();
   }
 
   this.clearSelf = function(){
     clearTimeout(this.timeoutID);
+    clearTimeout(this.timeoutFireID);
   }
 }
 
 // bullet constructor
-function bullet(width, height, color, x, y, direction, damage){
+function bullet(id, width, height, color, x, y, direction, damage, pic){
   // game data
   this.damage = damage;
 
   // display data
+  this.id = id;
   this.width = width;
   this.height = height;
   this.x = x;
   this.y = y;
   this.direction = direction;
   this.color = color;
+  this.pic = pic;
   // 0 for up, 1 for down, 2 for left, 3 for right
   this.update = function(){
     thing = myGame.context;
-    thing.fillStyle = color;
-    thing.fillRect(this.x, this.y, this.width, this.height);
+    // thing.fillStyle = color;
+    // thing.fillRect(this.x-this.width/2, this.y-this.height/2, this.width, this.height);var rotateAngle;
+    thing = myGame.context;
+    // thing.fillStyle = color;
+    // thing.fillRect(this.x, this.y, this.width, this.height);
+    switch (this.direction) {
+      case 0:
+        rotateAngle = 0;
+        break;
+      case 1:
+        rotateAngle = Math.PI;
+        break;
+      case 2:
+        rotateAngle = 3 * Math.PI / 2;
+        break;
+      case 3:
+        rotateAngle = Math.PI / 2;
+        break;
+    }
+    // thing.save();
+    thing.translate(this.x, this.y);
+    thing.rotate(rotateAngle);
+    thing.drawImage(this.pic, -this.width/2, -this.height/2, this.width, this.height);
+    thing.rotate(-rotateAngle);
+    thing.translate(-this.x, -this.y);
+    // thing.restore();
   }
   this.move = function(){
     // let the bullet fly in the object facing direction
@@ -194,13 +338,14 @@ function bullet(width, height, color, x, y, direction, damage){
   }
   this.checkBound = function(){
     // checking whether the bullet has flied out of the canvas
-    return (this.x < 0 || this.x+this.width > canvasWidth || this.y < 0 || this.y+this.height > canvasHeight);
+    return (this.x-this.width/2 < 0 || this.x+this.width/2 > canvasWidth || this.y-this.height/2 < 0 || this.y+this.height/2 > canvasHeight);
   }
 }
 
 // update game area
 function updateGameArea(){
   myGame.clear();
+  // redraw players and ais
   for(i in playerPool){
     playerPool[i].update();
     if(playerPool[i].health <= 0){
@@ -215,6 +360,7 @@ function updateGameArea(){
     }
   }
 
+  // randomize ai moving
   for(i in aiPool){
     switch (aiPool[i].moving) {
       // 0 for up, 1 for down, 2 for left, 3 for right, 4 for not moving
@@ -233,6 +379,7 @@ function updateGameArea(){
       }
   }
 
+  // redraw bullets
   for(i in bulletPool){
     // console.log(bulletPool[thing]);
     bulletPool[i].update();
@@ -256,6 +403,14 @@ function updateGameArea(){
     for(j in aiPool){
       if(collision(aiPool[j], bulletPool[i])){
         aiPool[j].health -= bulletPool[i].damage;
+        // if it eliminates an enemy, add the score
+        if(aiPool[j].health <= 0){
+          for(k in playerPool){
+            if(playerPool[k].id == bulletPool[i].id){
+              playerPool[k].score++;
+            }
+          }
+        }
         bulletPool.splice(i, 1);
       }
     }
@@ -263,24 +418,24 @@ function updateGameArea(){
 
   // player moving detection
   if(keyPool[38]){ // up arrow
-    redObj.moveUp();
+    playerPool[0].moveUp();
     // console.log("up arrow pressed");
   }
   if(keyPool[40]){ // down arrow
-    redObj.moveDown();
+    playerPool[0].moveDown();
     // console.log("down arrow pressed");
   }
   if(keyPool[37]){ // left arrow
-    redObj.moveLeft();
+    playerPool[0].moveLeft();
     // console.log("left arrow pressed");
   }
   if(keyPool[39]){ // right arrow
-    redObj.moveRight();
+    playerPool[0].moveRight();
     // console.log("right arrow pressed");
   }
   if(keyPool[32]){ // space
     // console.log("space pressed, fire!");
-    redObj.fire();
+    playerPool[0].fire();
   }
 }
 
@@ -294,6 +449,44 @@ var myGame = {
     this.context = this.canvas.getContext("2d");
     document.body.insertBefore(this.canvas, document.body.childNodes[0]);
     this.interval = setInterval(updateGameArea, 20);
+  },
+  clear : function(){
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+}
+
+// display player health and score
+function updateScoreBoard(){
+  var thing = board.context;
+  thing.font = "12px Arial";
+  thing.fillText("Player " + player1Obj.id + " health: " + player1Obj.health, 10, 15);
+  thing.fillText("Player " + player1Obj.id + " score: " + player1Obj.score, 10, 30);
+}
+
+function updateBoardArea(){
+  board.clear();
+  updateScoreBoard();
+
+  // check for winning
+  if(aiPool.length == 0){
+    clearInterval(myGame.interval);
+    clearInterval(board.interval);
+    updateScoreBoard();
+    updateGameArea();
+    alert("You win!");
+  }
+}
+
+// text board canvas object
+var board = {
+  canvas : document.createElement("canvas"),
+  start : function(){
+    this.canvas.width = canvasWidth;
+    this.canvas.height = 50;
+    this.canvas.style="border: 1px solid black;"
+    this.context = this.canvas.getContext("2d");
+    document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+    this.interval = setInterval(updateBoardArea, 20);
   },
   clear : function(){
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
