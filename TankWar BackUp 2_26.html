@@ -11,42 +11,29 @@
 </body>
 
 <script>
-enemyNum = 10;
-wallNum = 10;
+enemyNum = 20;
 canvasHeight = 600;
 canvasWidth = 960;
 var playerPool = [];
 var aiPool = [];
 var bulletPool = [];
 var keyPool = [];
-var wallPool = [];
 
 var playerTankImage = new Image();
 playerTankImage.src = 'PlayerTank.png';
 var AiTankImage = new Image();
 AiTankImage.src = 'AITank.png';
-var bulletImage = new Image();
-bulletImage.src = 'Bullet.png';
-var wallImage = new Image();
-wallImage.src = 'Wall.png';
 
 function startGame(){
   myGame.start();
-  board.start();
   window.addEventListener("keydown", doKeyDown, false);
   window.addEventListener("keyup", doKeyUp, false);
-  player1Obj = new player(0, 10, 30, 30, "red", 10, 120, 2, 2, true, playerTankImage);
-  playerPool.push(player1Obj);
+  redObj = new player(30, 30, "red", 10, 120, 2, 2, true, playerTankImage);
+  playerPool.push(redObj);
   for(i = 0; i < enemyNum; i ++){
     randomx = Math.floor(Math.random() * (canvasWidth-30));
     randomy = Math.floor(Math.random() * (canvasHeight-30));
-    aiPool.push(new player(-1, 5, 30, 30, "green", randomx, randomy, 2, 2, false, AiTankImage));
-  }
-  for(i = 0; i < wallNum; i ++){
-    randomx = Math.floor(Math.random() * (canvasWidth-30));
-    randomy = Math.floor(Math.random() * (canvasHeight-30));
-    // wall health -1 for infinite
-    wallPool.push(new wall(-1, 30, 30, randomx, randomy, true, true, wallImage));
+    aiPool.push(new player(30, 30, "green", randomx, randomy, 2, 2, false, AiTankImage));
   }
 }
 
@@ -54,10 +41,10 @@ function startGame(){
 function collision(playerObj, bulletObj){
   if(playerObj == undefined || bulletObj == undefined) return false;
   // console.log("Checking collision for player: ", playerObj, " and bullet: ", bulletObj);
-  return (playerObj.x - playerObj.width/2 < bulletObj.x + bulletObj.width/2 &&
-   playerObj.x + playerObj.width/2 > bulletObj.x - bulletObj.width/2 &&
-   playerObj.y - playerObj.height/2 < bulletObj.y + bulletObj.height/2 &&
-   playerObj.y + playerObj.height/2 > bulletObj.y - bulletObj.height/2);
+  return (playerObj.x < bulletObj.x + bulletObj.width &&
+   playerObj.x + playerObj.width > bulletObj.x &&
+   playerObj.y < bulletObj.y + bulletObj.height &&
+   playerObj.height + playerObj.y > bulletObj.y);
 }
 
 // detecting tank collision
@@ -83,19 +70,17 @@ function doKeyUp(key){
 }
 
 // component constructor
-function player(id, health, width, height, color, x, y, sx, sy, isPlayer, pic){
+function player(width, height, color, x, y, sx, sy, isPlayer, pic){
   // game data
-  this.id = id;
-  this.health = health;
+  this.health = 10;
   this.attack = 1;
   this.cooldown = 500;
-  this.score = 0;
 
   // display data
   this.width = width;
   this.height = height;
-  this.x = x + this.width/2;
-  this.y = y + this.height/2;
+  this.x = x;
+  this.y = y;
   this.speedx = sx;
   this.speedy = sy;
   this.direction = 3; // default facing to the right
@@ -103,36 +88,35 @@ function player(id, health, width, height, color, x, y, sx, sy, isPlayer, pic){
   this.canFire = true;
   this.color = color;
   this.timeoutID;
-  this.timeoutFireID;
   this.pic = pic;
 
   this.update = function(){
-    var rotateAngle;
+    // var rotateAngle;
     thing = myGame.context;
-    // thing.fillStyle = color;
-    // thing.fillRect(this.x, this.y, this.width, this.height);
-    switch (this.direction) {
-      case 0:
-        rotateAngle = 0;
-        break;
-      case 1:
-        rotateAngle = Math.PI;
-        break;
-
-      case 2:
-        rotateAngle = 3 * Math.PI / 2;
-        break;
-
-      case 3:
-        rotateAngle = Math.PI / 2;
-        break;
-    }
+    thing.fillStyle = color;
+    thing.fillRect(this.x, this.y, this.width, this.height);
+    // switch (this.direction) {
+    //   case 0:
+    //     rotateAngle = 0;
+    //     break;
+    //   case 1:
+    //     rotateAngle = Math.PI;
+    //     break;
+    //
+    //   case 2:
+    //     rotateAngle = 3 * Math.PI / 2;
+    //     break;
+    //
+    //   case 3:
+    //     rotateAngle = Math.PI / 2;
+    //     break;
+    // }
     // thing.save();
-    thing.translate(this.x, this.y);
-    thing.rotate(rotateAngle);
-    thing.drawImage(this.pic, -this.width/2, -this.height/2, this.width, this.height);
-    thing.rotate(-rotateAngle);
-    thing.translate(-this.x, -this.y);
+    // thing.translate(this.x, this.y);
+    // thing.rotate(rotateAngle);
+    // thing.drawImage(this.pic, -this.width/2, -this.height/2, this.width, this.height);
+    // thing.rotate(-rotateAngle);
+    // thing.translate(-this.x, -this.y);
     // thing.restore();
   }
   this.moveUp = function(){
@@ -151,12 +135,7 @@ function player(id, health, width, height, color, x, y, sx, sy, isPlayer, pic){
         }
       }
     }
-    for(thing in wallPool){
-      if(objCollision(this, wallPool[thing]) == 0 && wallPool[thing].tankB){
-        upmoving = false;
-      }
-    }
-    if(this.y - this.speedy - this.height/2 >= 0 && upmoving){
+    if(this.y - this.speedy >= 0 && upmoving){
       this.y -= this.speedy;
     }
     this.direction = 0;
@@ -177,12 +156,7 @@ function player(id, health, width, height, color, x, y, sx, sy, isPlayer, pic){
         }
       }
     }
-    for(thing in wallPool){
-      if(objCollision(this, wallPool[thing]) == 1 && wallPool[thing].tankB){
-        downmoving = false;
-      }
-    }
-    if(this.y + this.speedy + this.height/2 <= canvasHeight && downmoving){
+    if(this.y + this.speedy + this.height <= canvasHeight && downmoving){
       this.y += this.speedy;
     }
     this.direction = 1;
@@ -203,12 +177,7 @@ function player(id, health, width, height, color, x, y, sx, sy, isPlayer, pic){
         }
       }
     }
-    for(thing in wallPool){
-      if(objCollision(this, wallPool[thing]) == 2 && wallPool[thing].tankB){
-        leftmoving = false;
-      }
-    }
-    if(this.x - this.speedx - this.width/2 >= 0 && leftmoving){
+    if(this.x - this.speedx >= 0 && leftmoving){
       this.x -= this.speedx;
     }
     this.direction = 2;
@@ -229,12 +198,7 @@ function player(id, health, width, height, color, x, y, sx, sy, isPlayer, pic){
         }
       }
     }
-    for(thing in wallPool){
-      if(objCollision(this, wallPool[thing]) == 3 && wallPool[thing].tankB){
-        rightmoving = false;
-      }
-    }
-    if(this.x + this.speedx + this.width/2 <= canvasWidth && rightmoving){
+    if(this.x + this.speedx + this.width <= canvasWidth && rightmoving){
       this.x += this.speedx;
     }
     this.direction = 3;
@@ -253,23 +217,23 @@ function player(id, health, width, height, color, x, y, sx, sy, isPlayer, pic){
       var firey;
       switch (this.direction) {
         case 0: // up
-          firex = this.x;
-          firey = this.y-this.height/2-10;
+          firex = this.x+this.width/4;
+          firey = this.y-this.height/2-5;
           break;
         case 1: // down
-          firex = this.x;
-          firey = this.y+this.height/2+10;
+          firex = this.x+this.width/4;
+          firey = this.y+this.height+5;
           break;
         case 2: // left
-          firex = this.x-this.width/2-10;
-          firey = this.y;
+          firex = this.x-this.width/2-5;
+          firey = this.y+this.height/4;
           break;
         case 3: // right
-          firex = this.x+this.width/2+10;
-          firey = this.y;
+          firex = this.x+this.width+5;
+          firey = this.y+this.height/4;
           break;
       }
-      bulletPool.push(new bullet(this.id, this.width/2, this.height/2, this.color, firex, firey, this.direction, this.attack, bulletImage));
+      bulletPool.push(new bullet(this.width/2, this.height/2, this.color, firex, firey, this.direction, this.attack));
       this.canFire = false;
       setTimeout(function(){
         thing.resetFire(thing);
@@ -285,69 +249,32 @@ function player(id, health, width, height, color, x, y, sx, sy, isPlayer, pic){
       thing.aiTimeOut();
     }, Math.floor(Math.random() * 1500));
   }
-  this.aiFireTimeOut = function(){
-    var thing = this;
-    this.fire();
-    // console.log("Setting another time out for ai #", this, " with direction: ", this.moving);
-    this.timeoutFireID = setTimeout(function(){
-      thing.aiFireTimeOut();
-    }, Math.floor(Math.random() * 1500));
-  }
-
   if(!isPlayer){
     this.aiTimeOut();
-    this.aiFireTimeOut();
   }
 
   this.clearSelf = function(){
     clearTimeout(this.timeoutID);
-    clearTimeout(this.timeoutFireID);
   }
 }
 
 // bullet constructor
-function bullet(id, width, height, color, x, y, direction, damage, pic){
+function bullet(width, height, color, x, y, direction, damage){
   // game data
   this.damage = damage;
 
   // display data
-  this.id = id;
   this.width = width;
   this.height = height;
   this.x = x;
   this.y = y;
   this.direction = direction;
   this.color = color;
-  this.pic = pic;
   // 0 for up, 1 for down, 2 for left, 3 for right
   this.update = function(){
     thing = myGame.context;
-    // thing.fillStyle = color;
-    // thing.fillRect(this.x-this.width/2, this.y-this.height/2, this.width, this.height);var rotateAngle;
-    thing = myGame.context;
-    // thing.fillStyle = color;
-    // thing.fillRect(this.x, this.y, this.width, this.height);
-    switch (this.direction) {
-      case 0:
-        rotateAngle = 0;
-        break;
-      case 1:
-        rotateAngle = Math.PI;
-        break;
-      case 2:
-        rotateAngle = 3 * Math.PI / 2;
-        break;
-      case 3:
-        rotateAngle = Math.PI / 2;
-        break;
-    }
-    // thing.save();
-    thing.translate(this.x, this.y);
-    thing.rotate(rotateAngle);
-    thing.drawImage(this.pic, -this.width/2, -this.height/2, this.width, this.height);
-    thing.rotate(-rotateAngle);
-    thing.translate(-this.x, -this.y);
-    // thing.restore();
+    thing.fillStyle = color;
+    thing.fillRect(this.x, this.y, this.width, this.height);
   }
   this.move = function(){
     // let the bullet fly in the object facing direction
@@ -368,31 +295,13 @@ function bullet(id, width, height, color, x, y, direction, damage, pic){
   }
   this.checkBound = function(){
     // checking whether the bullet has flied out of the canvas
-    return (this.x-this.width/2 < 0 || this.x+this.width/2 > canvasWidth || this.y-this.height/2 < 0 || this.y+this.height/2 > canvasHeight);
-  }
-}
-
-// wall constructor
-function wall(health, width, height, x, y, tankB, bulletB, pic){
-  this.health = health;
-  this.width = width;
-  this.height = height;
-  this.x = x;
-  this.y = y;
-  this.tankB = tankB; // will block tank or not
-  this.bulletB = bulletB; // will block bullet or not
-  this.pic = pic;
-
-  this.update = function(){
-    thing = myGame.context;
-    thing.drawImage(this.pic, this.x-this.width/2, this.y-this.height/2, this.width, this.height);
+    return (this.x < 0 || this.x+this.width > canvasWidth || this.y < 0 || this.y+this.height > canvasHeight);
   }
 }
 
 // update game area
 function updateGameArea(){
   myGame.clear();
-  // redraw players and ais
   for(i in playerPool){
     playerPool[i].update();
     if(playerPool[i].health <= 0){
@@ -406,14 +315,7 @@ function updateGameArea(){
       aiPool.splice(i, 1);
     }
   }
-  for(i in wallPool){
-    wallPool[i].update();
-    if(wallPool[i].health == 0){
-      wallPool.splice(i, 1);
-    }
-  }
 
-  // randomize ai moving
   for(i in aiPool){
     switch (aiPool[i].moving) {
       // 0 for up, 1 for down, 2 for left, 3 for right, 4 for not moving
@@ -432,7 +334,6 @@ function updateGameArea(){
       }
   }
 
-  // redraw bullets
   for(i in bulletPool){
     // console.log(bulletPool[thing]);
     bulletPool[i].update();
@@ -455,28 +356,7 @@ function updateGameArea(){
   for(i in bulletPool){
     for(j in aiPool){
       if(collision(aiPool[j], bulletPool[i])){
-        if(aiPool[j].id != bulletPool[i].id){
-          aiPool[j].health -= bulletPool[i].damage;
-        }
-        // if it eliminates an enemy, add the score
-        if(aiPool[j].health <= 0){
-          for(k in playerPool){
-            if(playerPool[k].id == bulletPool[i].id){
-              playerPool[k].score++;
-            }
-          }
-        }
-        bulletPool.splice(i, 1);
-      }
-    }
-  }
-  // bullet / wall collision
-  for(i in bulletPool){
-    for(j in wallPool){
-      if(collision(wallPool[j], bulletPool[i]) && wallPool[j].bulletB){
-        if(wallPool[j].health != -1){
-          wallPool[j].health -= bulletPool[i].damage;
-        }
+        aiPool[j].health -= bulletPool[i].damage;
         bulletPool.splice(i, 1);
       }
     }
@@ -484,24 +364,24 @@ function updateGameArea(){
 
   // player moving detection
   if(keyPool[38]){ // up arrow
-    playerPool[0].moveUp();
+    redObj.moveUp();
     // console.log("up arrow pressed");
   }
   if(keyPool[40]){ // down arrow
-    playerPool[0].moveDown();
+    redObj.moveDown();
     // console.log("down arrow pressed");
   }
   if(keyPool[37]){ // left arrow
-    playerPool[0].moveLeft();
+    redObj.moveLeft();
     // console.log("left arrow pressed");
   }
   if(keyPool[39]){ // right arrow
-    playerPool[0].moveRight();
+    redObj.moveRight();
     // console.log("right arrow pressed");
   }
   if(keyPool[32]){ // space
     // console.log("space pressed, fire!");
-    playerPool[0].fire();
+    redObj.fire();
   }
 }
 
@@ -515,51 +395,6 @@ var myGame = {
     this.context = this.canvas.getContext("2d");
     document.body.insertBefore(this.canvas, document.body.childNodes[0]);
     this.interval = setInterval(updateGameArea, 20);
-  },
-  clear : function(){
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-  }
-}
-
-// display player health and score
-function updateScoreBoard(){
-  var thing = board.context;
-  thing.font = "12px Arial";
-  thing.fillText("Player " + player1Obj.id + " health: " + player1Obj.health, 10, 15);
-  thing.fillText("Player " + player1Obj.id + " score: " + player1Obj.score, 10, 30);
-}
-
-function updateBoardArea(){
-  board.clear();
-  updateScoreBoard();
-
-  // check for winning
-  if(aiPool.length == 0){
-    clearInterval(myGame.interval);
-    clearInterval(board.interval);
-    updateScoreBoard();
-    updateGameArea();
-    alert("You win!");
-  }
-  if(playerPool.length == 0){
-    clearInterval(myGame.interval);
-    clearInterval(board.interval);
-    updateScoreBoard();
-    updateGameArea();
-    alert("You lose!");
-  }
-}
-
-// text board canvas object
-var board = {
-  canvas : document.createElement("canvas"),
-  start : function(){
-    this.canvas.width = canvasWidth;
-    this.canvas.height = 50;
-    this.canvas.style="border: 1px solid black;"
-    this.context = this.canvas.getContext("2d");
-    document.body.insertBefore(this.canvas, document.body.childNodes[0]);
-    this.interval = setInterval(updateBoardArea, 20);
   },
   clear : function(){
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
